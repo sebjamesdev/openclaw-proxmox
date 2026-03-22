@@ -43,44 +43,25 @@ function cleanup_nodesource_tmp() {
   [[ -n "$NODESOURCE_TMP" ]] && rm -f "$NODESOURCE_TMP"
 }
 
-function try_nodesource_setup() {
+function setup_nodesource() {
   local version="$1"
   local setup_url="https://deb.nodesource.com/setup_${version}.x"
 
-  NODESOURCE_TMP="$(mktemp /tmp/nodesource_setup.XXXXXX)"
-
-  if ! curl -fsSL --max-time 30 -o "$NODESOURCE_TMP" "$setup_url"; then
-    cleanup_nodesource_tmp
-    return 1
+  if curl -fsSL --max-time 30 "$setup_url" | bash - &>/dev/null; then
+    return 0
   fi
-
-  if grep -qi -e "unsupported" -e "not currently supported" -e "is not supported" "$NODESOURCE_TMP"; then
-    cleanup_nodesource_tmp
-    return 1
-  fi
-
-  return 0
+  return 1
 }
 
 msg_info "Installing Node.js ${REQUIRED_NODE_MAJOR}"
-if try_nodesource_setup "$REQUIRED_NODE_MAJOR"; then
-  if ! bash "$NODESOURCE_TMP" &>/dev/null; then
-    cleanup_nodesource_tmp
-    msg_error "Node.js ${REQUIRED_NODE_MAJOR} setup script failed"
-    exit 1
-  fi
-elif try_nodesource_setup "$FALLBACK_NODE_MAJOR"; then
+if setup_nodesource "$REQUIRED_NODE_MAJOR"; then
+  true
+elif setup_nodesource "$FALLBACK_NODE_MAJOR"; then
   msg_warn "Node.js ${REQUIRED_NODE_MAJOR} unavailable for this distro, falling back to ${FALLBACK_NODE_MAJOR}"
-  if ! bash "$NODESOURCE_TMP" &>/dev/null; then
-    cleanup_nodesource_tmp
-    msg_error "Node.js ${FALLBACK_NODE_MAJOR} setup script failed"
-    exit 1
-  fi
 else
   msg_error "Neither Node.js ${REQUIRED_NODE_MAJOR} nor ${FALLBACK_NODE_MAJOR} available via NodeSource"
   exit 1
 fi
-cleanup_nodesource_tmp
 
 apt-get install -y nodejs &>/dev/null
 if ! command -v node &>/dev/null || ! node --version &>/dev/null; then
