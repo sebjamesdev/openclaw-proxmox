@@ -1,25 +1,42 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2026 community-scripts ORG
-# Author: Seb James
-# License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
+# Copyright (c) 2026 Seb James
+# License: MIT
 # Source: https://openclaw.ai/
+#
+# This script runs INSIDE the LXC container.
 
-source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
-color
-verb_ip6
-catch_errors
-setting_up_container
-network_check
-update_os
+set -Eeuo pipefail
 
 REQUIRED_NODE_MAJOR="${REQUIRED_NODE_MAJOR:-24}"
 FALLBACK_NODE_MAJOR="${FALLBACK_NODE_MAJOR:-22}"
 
-msg_info "Installing Dependencies"
-$STD apt install -y build-essential
-msg_ok "Installed Dependencies"
+# ── Colours ───────────────────────────────────────────────────────────────────
+GN='\033[1;92m'
+RD='\033[01;31m'
+YW='\033[33m'
+CL='\033[m'
+BFR="\\r\\033[K"
+CM="${GN}✓${CL}"
+CROSS="${RD}✗${CL}"
 
+function msg_info()  { echo -ne "  ${YW}⏳ $1...${CL}"; }
+function msg_ok()    { echo -e "${BFR}  ${CM} ${GN}$1${CL}"; }
+function msg_warn()  { echo -e "${BFR}  ${YW}⚠  $1${CL}"; }
+function msg_error() { echo -e "${BFR}  ${CROSS} ${RD}$1${CL}"; }
+
+# ── OS Update ─────────────────────────────────────────────────────────────────
+msg_info "Updating OS"
+apt-get update -qq &>/dev/null
+apt-get -y upgrade &>/dev/null
+msg_ok "Updated OS"
+
+# ── Dependencies ──────────────────────────────────────────────────────────────
+msg_info "Installing dependencies"
+apt-get install -y curl sudo build-essential &>/dev/null
+msg_ok "Installed dependencies"
+
+# ── Node.js ───────────────────────────────────────────────────────────────────
 NODESOURCE_TMP=""
 
 function cleanup_nodesource_tmp() {
@@ -47,14 +64,14 @@ function try_nodesource_setup() {
 
 msg_info "Installing Node.js ${REQUIRED_NODE_MAJOR}"
 if try_nodesource_setup "$REQUIRED_NODE_MAJOR"; then
-  if ! $STD bash "$NODESOURCE_TMP"; then
+  if ! bash "$NODESOURCE_TMP" &>/dev/null; then
     cleanup_nodesource_tmp
     msg_error "Node.js ${REQUIRED_NODE_MAJOR} setup script failed"
     exit 1
   fi
 elif try_nodesource_setup "$FALLBACK_NODE_MAJOR"; then
   msg_warn "Node.js ${REQUIRED_NODE_MAJOR} unavailable for this distro, falling back to ${FALLBACK_NODE_MAJOR}"
-  if ! $STD bash "$NODESOURCE_TMP"; then
+  if ! bash "$NODESOURCE_TMP" &>/dev/null; then
     cleanup_nodesource_tmp
     msg_error "Node.js ${FALLBACK_NODE_MAJOR} setup script failed"
     exit 1
@@ -64,21 +81,25 @@ else
   exit 1
 fi
 cleanup_nodesource_tmp
-$STD apt install -y nodejs
+
+apt-get install -y nodejs &>/dev/null
 if ! command -v node &>/dev/null || ! node --version &>/dev/null; then
   msg_error "Node.js installation failed"
   exit 1
 fi
 msg_ok "Installed Node.js $(node --version)"
 
+# ── OpenClaw ──────────────────────────────────────────────────────────────────
 msg_info "Installing OpenClaw"
-$STD npm install -g openclaw
+npm install -g openclaw &>/dev/null
 if ! command -v openclaw &>/dev/null || ! openclaw --version &>/dev/null; then
   msg_error "OpenClaw installation failed"
   exit 1
 fi
 msg_ok "Installed OpenClaw $(openclaw --version)"
 
-motd_ssh
-customize
-cleanup_lxc
+# ── Cleanup ───────────────────────────────────────────────────────────────────
+msg_info "Cleaning up"
+apt-get -y autoremove &>/dev/null
+apt-get -y autoclean &>/dev/null
+msg_ok "Cleaned up"
