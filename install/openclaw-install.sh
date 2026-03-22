@@ -33,7 +33,7 @@ msg_ok "Updated OS"
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
 msg_info "Installing dependencies"
-apt-get install -y curl sudo build-essential &>/dev/null
+apt-get install -y curl sudo git build-essential &>/dev/null
 msg_ok "Installed dependencies"
 
 # ── Node.js ───────────────────────────────────────────────────────────────────
