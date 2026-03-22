@@ -37,12 +37,6 @@ apt-get install -y curl sudo build-essential &>/dev/null
 msg_ok "Installed dependencies"
 
 # ── Node.js ───────────────────────────────────────────────────────────────────
-NODESOURCE_TMP=""
-
-function cleanup_nodesource_tmp() {
-  [[ -n "$NODESOURCE_TMP" ]] && rm -f "$NODESOURCE_TMP"
-}
-
 function setup_nodesource() {
   local version="$1"
   local setup_url="https://deb.nodesource.com/setup_${version}.x"
