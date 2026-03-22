@@ -1,0 +1,24 @@
+# Claude Code
+.claude/
+
+# BMAD framework
+_bmad/
+_bmad-output/
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment / secrets
+.env
+.env.*
